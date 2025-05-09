@@ -179,15 +179,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if entry.created_at %}
-                                            {% if 'T' in entry.created_at %}
-                                                {{ entry.created_at.split('T')[0] }}
-                                            {% else %}
-                                                {{ entry.created_at }}
-                                            {% endif %}
-                                        {% else %}
-                                            <span class="text-muted">Not available</span>
-                                        {% endif %}
+                                        {{ entry.created_at|format_date }}
                                     </td>
                                     <td>
                                         <div class="btn-group">

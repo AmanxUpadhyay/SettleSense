@@ -34,7 +34,10 @@ instance/
 
 # SQLite Database
 *.sqlite
+*.sqlite-journal
 *.db
+*.db-journal
+!settle_sense/instance/.gitkeep
 
 # macOS
 .DS_Store

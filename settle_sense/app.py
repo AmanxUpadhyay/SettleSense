@@ -51,40 +51,128 @@ def init_db():
     """Initialize the database schema if it doesn't exist."""
     db = get_db()
     
-    # First check if the table exists and what columns it has
-    cursor = db.execute("PRAGMA table_info(debt)")
-    columns = {row['name'] for row in cursor.fetchall()}
+    try:
+        # First check if the table exists and what columns it has
+        cursor = db.execute("PRAGMA table_info(debt)")
+        columns = {row['name'] for row in cursor.fetchall()}
+        
+        if not columns:
+            app.logger.info("Creating new debt table with complete schema")
+            # Table doesn't exist, create it with all columns
+            db.execute('''
+                CREATE TABLE debt (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    person TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    direction TEXT CHECK(direction IN ('you_owe','they_owe')) NOT NULL,
+                    note TEXT,
+                    created_at TEXT,
+                    updated_at TEXT
+                )
+            ''')
+        else:
+            app.logger.info(f"Existing table found with columns: {', '.join(columns)}")
+            # Table exists, check if it needs to be updated
+            if 'created_at' not in columns:
+                app.logger.info("Adding created_at column")
+                db.execute('ALTER TABLE debt ADD COLUMN created_at TEXT')
+            if 'updated_at' not in columns:
+                app.logger.info("Adding updated_at column")
+                db.execute('ALTER TABLE debt ADD COLUMN updated_at TEXT')
+                
+        db.commit()
+        app.logger.info("Database schema initialization completed successfully")
+        return True
+    except sqlite3.Error as e:
+        app.logger.error(f"Database initialization error: {str(e)}")
+        db.rollback()
+        return False
     
-    if not columns:
-        # Table doesn't exist, create it with all columns
-        db.execute('''
-            CREATE TABLE debt (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                person TEXT NOT NULL,
-                amount REAL NOT NULL,
-                direction TEXT CHECK(direction IN ('you_owe','they_owe')) NOT NULL,
-                note TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-    else:
-        # Table exists, check if it needs to be updated
-        if 'created_at' not in columns:
-            db.execute('ALTER TABLE debt ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP')
-        if 'updated_at' not in columns:
-            db.execute('ALTER TABLE debt ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP')
+# Helper function to update any null timestamps in existing data
+def update_null_timestamps():
+    """Update any null timestamps in the database with the current time."""
+    db = get_db()
+    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    try:
+        # First check if the timestamps columns exist
+        cursor = db.execute("PRAGMA table_info(debt)")
+        columns = {row['name'] for row in cursor.fetchall()}
+        
+        updated_rows = 0
+        
+        if 'created_at' in columns:
+            result = db.execute('UPDATE debt SET created_at = ? WHERE created_at IS NULL', (now,))
+            updated_rows += result.rowcount
             
-    db.commit()
+        if 'updated_at' in columns:
+            result = db.execute('UPDATE debt SET updated_at = ? WHERE updated_at IS NULL', (now,))
+            updated_rows += result.rowcount
+        
+        db.commit()
+        app.logger.info(f"Updated timestamps for {updated_rows} rows")
+        return True
+    except sqlite3.Error as e:
+        app.logger.error(f"Error updating timestamps: {str(e)}")
+        db.rollback()
+        return False
+
+# Database migration route
+@app.route('/migration')
+def migration():
+    """Show database migration page."""
+    current_year = datetime.datetime.now().year
+    error = request.args.get('error')
+    message = request.args.get('message')
+    error_details = request.args.get('details')
     
+    return render_template(
+        'migration.html', 
+        current_year=current_year,
+        error=error,
+        message=message,
+        error_details=error_details
+    )
+
 # Run initialization when the application starts
+database_ready = False
 with app.app_context():
-    init_db()
+    try:
+        database_ready = init_db()
+        if database_ready:
+            update_null_timestamps()
+    except Exception as e:
+        app.logger.error(f"Failed to initialize database: {str(e)}")
+        database_ready = False
 
 # Data Formatting Helpers
 def format_currency(value):
     """Format a numeric value as currency."""
     return f"${abs(value):.2f}"
+
+def format_date(value):
+    """Format a date string nicely."""
+    if not value:
+        return "N/A"
+        
+    try:
+        # Try different date formats
+        if 'T' in value:
+            # ISO format with T separator
+            dt = datetime.datetime.fromisoformat(value)
+        elif ' ' in value:
+            # SQLite format with space separator
+            dt = datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        else:
+            # Just date
+            dt = datetime.datetime.strptime(value, '%Y-%m-%d')
+            
+        return dt.strftime('%b %d, %Y')
+    except (ValueError, TypeError):
+        return str(value)
+
+# Register Jinja filters
+app.jinja_env.filters['format_date'] = format_date
 
 # API Routes
 @app.route('/')
@@ -168,11 +256,24 @@ def add():
         
         # Save to database
         db = get_db()
-        now = datetime.datetime.now().isoformat()
-        db.execute(
-            'INSERT INTO debt (person, amount, direction, note, created_at, updated_at) VALUES (?,?,?,?,?,?)',
-            (person, amount, direction, note, now, now)
-        )
+        
+        # Format current time as YYYY-MM-DD HH:MM:SS for better SQLite compatibility
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # First check if the created_at column exists before inserting
+        cursor = db.execute("PRAGMA table_info(debt)")
+        columns = {row['name'] for row in cursor.fetchall()}
+        
+        if 'created_at' in columns and 'updated_at' in columns:
+            db.execute(
+                'INSERT INTO debt (person, amount, direction, note, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+                (person, amount, direction, note, now, now)
+            )
+        else:
+            db.execute(
+                'INSERT INTO debt (person, amount, direction, note) VALUES (?,?,?,?)',
+                (person, amount, direction, note)
+            )
         db.commit()
         
         flash(f"Debt record for {person} added successfully", "success")
@@ -225,13 +326,25 @@ def edit(id):
                 return redirect(url_for('edit', id=id))
                 
             note = request.form.get('note', '').strip()
-            now = datetime.datetime.now().isoformat()
+            
+            # Format current time as YYYY-MM-DD HH:MM:SS for better SQLite compatibility
+            now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # First check if the updated_at column exists before updating
+            cursor = db.execute("PRAGMA table_info(debt)")
+            columns = {row['name'] for row in cursor.fetchall()}
             
             # Update database
-            db.execute(
-                'UPDATE debt SET person=?, amount=?, direction=?, note=?, updated_at=? WHERE id=?',
-                (person, amount, direction, note, now, id)
-            )
+            if 'updated_at' in columns:
+                db.execute(
+                    'UPDATE debt SET person=?, amount=?, direction=?, note=?, updated_at=? WHERE id=?',
+                    (person, amount, direction, note, now, id)
+                )
+            else:
+                db.execute(
+                    'UPDATE debt SET person=?, amount=?, direction=?, note=? WHERE id=?',
+                    (person, amount, direction, note, id)
+                )
             db.commit()
             
             flash("Entry updated successfully", "success")
