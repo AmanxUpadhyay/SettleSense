@@ -652,3 +652,9 @@ footer {
         width: 100%;
     }
 }
+
+.piggy-illustration img {
+    width: 60px;
+    height: auto;
+    opacity: 0.85;
+}

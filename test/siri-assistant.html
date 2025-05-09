@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siri Assistant Animation</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #e3f0ff 0%, #f3e6ff 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+    }
+    .siri-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 320px;
+      width: 320px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      box-shadow: 0 8px 32px 0 rgba(166, 200, 255, 0.18);
+      position: relative;
+      overflow: visible;
+    }
+    .siri-wave {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .siri-dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 60% 40%, #fff 0%, #a6c8ff 60%, #7ed6f9 100%);
+      box-shadow: 0 0 32px #7ed6f9aa, 0 0 64px #a6c8ff55;
+      z-index: 2;
+      animation: siri-pulse 2s infinite cubic-bezier(.68,-0.55,.27,1.55);
+    }
+    .siri-wave svg {
+      width: 220px;
+      height: 220px;
+      display: block;
+    }
+    @keyframes siri-pulse {
+      0%, 100% { box-shadow: 0 0 32px #7ed6f9aa, 0 0 64px #a6c8ff55; }
+      50% { box-shadow: 0 0 64px #7ed6f9cc, 0 0 96px #a6c8ff88; }
+    }
+    .siri-glow {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff6 0%, #7ed6f9 80%, transparent 100%);
+      z-index: 1;
+      filter: blur(8px);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="siri-container">
+    <div class="siri-wave">
+      <svg viewBox="0 0 220 220">
+        <path id="wave1" fill="none" stroke="#7ed6f9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+          <animate attributeName="d" dur="2s" repeatCount="indefinite"
+            values="M20,110 Q60,60 110,110 T200,110;M20,110 Q60,160 110,110 T200,110;M20,110 Q60,60 110,110 T200,110" />
+        </path>
+        <path id="wave2" fill="none" stroke="#a6c8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.7">
+          <animate attributeName="d" dur="2s" repeatCount="indefinite"
+            values="M40,110 Q80,80 110,110 T180,110;M40,110 Q80,140 110,110 T180,110;M40,110 Q80,80 110,110 T180,110" />
+        </path>
+        <path id="wave3" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+          <animate attributeName="d" dur="2s" repeatCount="indefinite"
+            values="M60,110 Q100,100 110,110 T160,110;M60,110 Q100,120 110,110 T160,110;M60,110 Q100,100 110,110 T160,110" />
+        </path>
+      </svg>
+    </div>
+    <div class="siri-dot"></div>
+    <div class="siri-glow"></div>
+  </div>
+</body>
+</html>

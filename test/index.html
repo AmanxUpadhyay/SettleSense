@@ -4,8 +4,88 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+    <script src="app.js" defer></script>
 </head>
 <body>
-    
+    <div class="container">
+        <header class="header">
+            <div class="logo-circle">
+                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="30" cy="30" r="30" fill="#A6C8FF"/>
+                    <path d="M18 32L27 41L43 21" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h1 class="brand">SettleSense</h1>
+        </header>
+        <section class="card net-balance">
+            <span class="label">Net Balance</span>
+            <span class="balance positive">
+                € 50
+                <span class="badge success">✔</span>
+            </span>
+        </section>
+        <section class="card add-entry">
+            <h2>Add Entry</h2>
+            <form class="entry-form">
+                <div class="input-row overlay-row">
+                    <span class="input-icon">
+                        <i class="fa-solid fa-user"></i>
+                    </span>
+                    <div class="input-overlay-group">
+                        <input type="text" placeholder="Name" required class="name-input">
+                        <input type="number" placeholder="0" min="0" required class="money-input">
+                        <span class="input-icon money-icon">
+                            <i class="fa-solid fa-sterling-sign"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="toggle-row">
+                    <button type="button" class="toggle-btn owe active" id="oweBtn"><i class="fa-solid fa-arrow-up"></i> You owe</button>
+                    <button type="button" class="toggle-btn they-owe" id="theyOweBtn"><i class="fa-solid fa-arrow-down"></i> They owe you</button>
+                </div>
+                <div class="input-row overlay-row">
+                    <span class="input-icon">
+                        <i class="fa-solid fa-message"></i>
+                    </span>
+                    <div class="input-overlay-group">
+                        <input type="text" placeholder="Note" class="note-input">
+                        <button type="submit" class="add-btn overlay-btn" id="addBtn">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+        <section class="card activity">
+            <div class="activity-header">
+                <h2>Activity</h2>
+                <a href="#" class="view-all">View all <span>&gt;</span></a>
+            </div>
+            <div class="activity-list">
+                <div class="activity-item owe">
+                    <img class="avatar-img" src="https://img.icons8.com/color/48/000000/person-female.png" alt="Alice avatar" />
+                    <div class="activity-info">
+                        <span class="name">Alice</span>
+                        <span class="desc">Groceries</span>
+                    </div>
+                    <div class="activity-amount owe">You owe € 30</div>
+                </div>
+                <div class="activity-item they-owe">
+                    <img class="avatar-img" src="https://img.icons8.com/color/48/000000/person-male.png" alt="Bob avatar" />
+                    <div class="activity-info">
+                        <span class="name">Bob</span>
+                        <span class="desc">Dinner</span>
+                    </div>
+                    <div class="activity-amount they-owe">They owe € 20</div>
+                </div>
+                <div class="piggy-illustration">
+                    <img src="pig.png" alt="">
+                </div>
+            </div>
+        </section>
+    </div>
 </body>
 </html>
