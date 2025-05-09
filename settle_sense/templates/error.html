@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SettleSense | Error</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="bi bi-cash-coin me-2"></i>SettleSense
+            </a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card border-danger">
+                    <div class="card-body text-center">
+                        <i class="bi bi-exclamation-triangle-fill text-danger display-1 my-3"></i>
+                        <h1 class="card-title">Error</h1>
+                        <p class="card-text lead">{{ error }}</p>
+                        <hr>
+                        <p class="text-muted">Sorry, something went wrong. Please try again later.</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="bi bi-house me-1"></i>Return to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="mt-5 py-3 text-center text-muted border-top">
+        <div class="container">
+            <p class="mb-1">SettleSense &copy; {{ current_year if current_year else 2025 }}</p>
+            <p class="mb-0">Track your debts professionally.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
