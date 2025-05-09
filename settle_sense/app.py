@@ -117,20 +117,184 @@ def update_null_timestamps():
         db.rollback()
         return False
 
-# Database migration route
-@app.route('/migration')
-def migration():
-    """Show database migration page."""
+# ---- Database Migration System ----
+import os
+import shutil
+import sqlite3
+import time
+
+def check_database_status():
+    """Check the database structure and return a list of checks."""
+    db = get_db()
+    cursor = db.execute("PRAGMA table_info(debt)")
+    columns = {row['name'] for row in cursor.fetchall()}
+    
+    # Define required columns and checks
+    required_columns = {
+        'id', 'person', 'amount', 'direction', 'note', 
+        'created_at', 'updated_at'
+    }
+    
+    # Perform checks
+    checks = [
+        {
+            'name': 'Table exists',
+            'status': len(columns) > 0
+        },
+        {
+            'name': 'Required columns',
+            'status': required_columns.issubset(columns)
+        }
+    ]
+    
+    # Check if direction has proper constraint
+    constraint_check = {'status': False, 'name': 'Direction constraint'}
+    try:
+        # Check if the constraint is defined properly
+        table_info = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='debt'").fetchone()
+        if table_info and "CHECK(direction IN ('you_owe','they_owe'))" in table_info[0]:
+            constraint_check['status'] = True
+    except:
+        pass
+    
+    checks.append(constraint_check)
+    
+    # Check for indexes (if we've added any)
+    index_check = {'status': False, 'name': 'Person index'}
+    try:
+        indexes = db.execute("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='debt'").fetchall()
+        if any('person' in idx['name'] for idx in indexes):
+            index_check['status'] = True
+    except:
+        pass
+    
+    checks.append(index_check)
+    
+    return checks
+
+def needs_migration():
+    """Determine if the database needs migration."""
+    checks = check_database_status()
+    return not all(check['status'] for check in checks)
+
+def backup_database():
+    """Create a backup of the current database."""
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    backup_dir = os.path.join(BASE_DIR, 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    source = app.config['DATABASE']
+    if os.path.exists(source):
+        destination = os.path.join(backup_dir, f"debts_{timestamp}.sqlite")
+        shutil.copy2(source, destination)
+        return destination
+    return None
+
+@app.route('/migrate')
+def migrate():
+    """Show migration status page."""
     current_year = datetime.datetime.now().year
-    error = request.args.get('error')
-    message = request.args.get('message')
-    error_details = request.args.get('details')
+    db_checks = check_database_status()
+    needs_mig = needs_migration()
     
     return render_template(
-        'migration.html', 
+        'migration.html',
+        db_checks=db_checks,
+        needs_migration=needs_mig,
         current_year=current_year,
-        error=error,
+        message=None,
+        error=None
+    )
+
+@app.route('/migrate/run', methods=['POST'])
+def run_migration():
+    """Execute database migration."""
+    error = None
+    message = None
+    error_details = None
+    make_backup = request.form.get('backup', 'off') == 'on'
+    
+    try:
+        if make_backup:
+            backup_file = backup_database()
+            if backup_file:
+                message = f"Database backed up successfully."
+        
+        # Run a full migration
+        db = get_db()
+        
+        # Get current columns
+        cursor = db.execute("PRAGMA table_info(debt)")
+        columns = {row['name'] for row in cursor.fetchall()}
+        
+        # Create temp table with new schema
+        db.execute('''
+        CREATE TABLE IF NOT EXISTS debt_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            person TEXT NOT NULL,
+            amount REAL NOT NULL,
+            direction TEXT CHECK(direction IN ('you_owe','they_owe')) NOT NULL,
+            note TEXT,
+            created_at TEXT,
+            updated_at TEXT
+        )
+        ''')
+        
+        # Copy data from old to new table
+        col_intersection = columns.intersection({'id', 'person', 'amount', 'direction', 'note', 'created_at', 'updated_at'})
+        copy_cols = ', '.join(col_intersection)
+        
+        # Build placeholders for missing columns
+        placeholders = []
+        for col in {'id', 'person', 'amount', 'direction', 'note', 'created_at', 'updated_at'} - col_intersection:
+            if col in ('created_at', 'updated_at'):
+                placeholders.append(f"datetime('now') as {col}")
+            elif col == 'note':
+                placeholders.append("'' as note")
+            
+        placeholder_str = ', '.join(placeholders)
+        
+        if placeholder_str:
+            select_stmt = f"SELECT {copy_cols}, {placeholder_str} FROM debt"
+        else:
+            select_stmt = f"SELECT {copy_cols} FROM debt"
+            
+        # Insert data into new table
+        db.execute(f"INSERT INTO debt_new {select_stmt}")
+        
+        # Drop old table and rename new one
+        db.execute("DROP TABLE debt")
+        db.execute("ALTER TABLE debt_new RENAME TO debt")
+        
+        # Add indexes
+        db.execute("CREATE INDEX IF NOT EXISTS idx_debt_person ON debt(person)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_debt_direction ON debt(direction)")
+        
+        # Update nulls with current date
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        db.execute("UPDATE debt SET created_at = ? WHERE created_at IS NULL", (now,))
+        db.execute("UPDATE debt SET updated_at = ? WHERE updated_at IS NULL", (now,))
+        
+        db.commit()
+        message = "Database migration completed successfully!"
+        
+    except Exception as e:
+        error = "An error occurred during migration."
+        error_details = str(e)
+        app.logger.error(f"Migration error: {str(e)}")
+        db.rollback()
+    
+    current_year = datetime.datetime.now().year
+    db_checks = check_database_status()
+    needs_mig = needs_migration()
+    
+    return render_template(
+        'migration.html',
+        db_checks=db_checks,
+        needs_migration=needs_mig,
+        current_year=current_year,
         message=message,
+        error=error,
         error_details=error_details
     )
 
@@ -148,7 +312,10 @@ with app.app_context():
 # Data Formatting Helpers
 def format_currency(value):
     """Format a numeric value as currency."""
-    return f"${abs(value):.2f}"
+    # Get user's preferred currency symbol from settings
+    settings = get_settings()
+    symbol = settings.get('currency_symbol', '$')
+    return f"{symbol}{abs(value):.2f}"
 
 def format_date(value):
     """Format a date string nicely."""
@@ -157,7 +324,9 @@ def format_date(value):
         
     try:
         # Try different date formats
-        if 'T' in value:
+        if isinstance(value, datetime.datetime):
+            dt = value
+        elif 'T' in value:
             # ISO format with T separator
             dt = datetime.datetime.fromisoformat(value)
         elif ' ' in value:
@@ -167,7 +336,16 @@ def format_date(value):
             # Just date
             dt = datetime.datetime.strptime(value, '%Y-%m-%d')
             
-        return dt.strftime('%b %d, %Y')
+        # Get user's preferred date format from settings
+        settings = get_settings()
+        date_format = settings.get('date_format', 'YYYY-MM-DD')
+        
+        if date_format == 'MM/DD/YYYY':
+            return dt.strftime('%m/%d/%Y')
+        elif date_format == 'DD/MM/YYYY':
+            return dt.strftime('%d/%m/%Y')
+        else:  # YYYY-MM-DD
+            return dt.strftime('%Y-%m-%d')
     except (ValueError, TypeError):
         return str(value)
 
@@ -214,6 +392,29 @@ def index():
     # Get unique people
     people = db.execute('SELECT DISTINCT person FROM debt ORDER BY person').fetchall()
     
+    # Get person summary for charts
+    people_summary = []
+    person_balances = {}
+    
+    for entry in entries:
+        person = entry['person']
+        if person not in person_balances:
+            person_balances[person] = 0
+        
+        if entry['direction'] == 'they_owe':
+            person_balances[person] += entry['amount']
+        else:
+            person_balances[person] -= entry['amount']
+    
+    for person, balance in person_balances.items():
+        people_summary.append({
+            'name': person,
+            'balance': balance
+        })
+    
+    # Sort by balance (highest positive first)
+    people_summary.sort(key=lambda x: x['balance'], reverse=True)
+    
     # Current datetime for templates
     current_year = datetime.datetime.now().year
     
@@ -224,6 +425,7 @@ def index():
         total_owed_to_you=total_owed_to_you,
         total_you_owe=total_you_owe,
         people=people,
+        people_summary=people_summary,
         format_currency=format_currency,
         current_year=current_year
     )
@@ -457,6 +659,201 @@ def export_csv():
     )
     
     return response
+
+# ---- Settings Management ----
+import json
+import platform
+import flask
+
+def get_settings():
+    """Load application settings from JSON file."""
+    settings_path = os.path.join(BASE_DIR, 'instance', 'settings.json')
+    if os.path.exists(settings_path):
+        try:
+            with open(settings_path, 'r') as f:
+                return json.load(f)
+        except:
+            app.logger.warning("Failed to load settings.json, using defaults")
+    return {}
+
+def save_settings(settings):
+    """Save application settings to JSON file."""
+    settings_path = os.path.join(BASE_DIR, 'instance', 'settings.json')
+    os.makedirs(os.path.dirname(settings_path), exist_ok=True)
+    try:
+        with open(settings_path, 'w') as f:
+            json.dump(settings, f, indent=2)
+        return True
+    except Exception as e:
+        app.logger.error(f"Failed to save settings: {str(e)}")
+        return False
+
+def get_system_info():
+    """Get system information for the About page."""
+    return {
+        'python_version': platform.python_version(),
+        'flask_version': flask.__version__,
+        'sqlite_version': sqlite3.sqlite_version,
+        'os': f"{platform.system()} {platform.release()}"
+    }
+
+def get_db_info():
+    """Get database information for the Settings page."""
+    db_path = app.config['DATABASE']
+    
+    if not os.path.exists(db_path):
+        return {
+            'path': db_path,
+            'size': '0 KB',
+            'modified': None,
+            'record_count': 0
+        }
+    
+    # Get database size in KB
+    size_bytes = os.path.getsize(db_path)
+    if size_bytes < 1024:
+        size_str = f"{size_bytes} bytes"
+    elif size_bytes < 1024 * 1024:
+        size_str = f"{size_bytes / 1024:.1f} KB"
+    else:
+        size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
+    
+    # Get modification time
+    mtime = os.path.getmtime(db_path)
+    modified = datetime.datetime.fromtimestamp(mtime)
+    
+    # Get record count
+    db = get_db()
+    try:
+        count = db.execute("SELECT COUNT(*) FROM debt").fetchone()[0]
+    except:
+        count = 0
+        
+    return {
+        'path': db_path,
+        'size': size_str,
+        'modified': modified,
+        'record_count': count
+    }
+
+def get_backups():
+    """Get list of available backups."""
+    backup_dir = os.path.join(BASE_DIR, 'backups')
+    if not os.path.exists(backup_dir):
+        return []
+    
+    backups = []
+    for filename in os.listdir(backup_dir):
+        if filename.endswith('.sqlite'):
+            file_path = os.path.join(backup_dir, filename)
+            
+            # Get size
+            size_bytes = os.path.getsize(file_path)
+            if size_bytes < 1024:
+                size_str = f"{size_bytes} bytes"
+            elif size_bytes < 1024 * 1024:
+                size_str = f"{size_bytes / 1024:.1f} KB"
+            else:
+                size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
+            
+            # Get creation time
+            ctime = os.path.getctime(file_path)
+            created = datetime.datetime.fromtimestamp(ctime)
+            
+            backups.append({
+                'name': filename,
+                'file': file_path,
+                'size': size_str,
+                'created': created
+            })
+    
+    # Sort by creation time, newest first
+    backups.sort(key=lambda x: x['created'], reverse=True)
+    return backups
+
+@app.route('/settings')
+def settings():
+    """Render the settings page."""
+    current_settings = get_settings()
+    db_info = get_db_info()
+    sys_info = get_system_info()
+    backups = get_backups()
+    current_year = datetime.datetime.now().year
+    
+    return render_template(
+        'settings.html',
+        settings=current_settings,
+        db_path=db_info['path'],
+        db_size=db_info['size'],
+        db_modified=db_info['modified'],
+        record_count=db_info['record_count'],
+        sys_info=sys_info,
+        backups=backups,
+        current_year=current_year
+    )
+
+@app.route('/settings/update', methods=['POST'])
+def update_settings():
+    """Update application settings."""
+    section = request.form.get('section', '')
+    current_settings = get_settings()
+    
+    if section == 'general':
+        current_settings['currency_symbol'] = request.form.get('currency_symbol', '$')
+        current_settings['date_format'] = request.form.get('date_format', 'YYYY-MM-DD')
+    
+    elif section == 'display':
+        current_settings['theme'] = request.form.get('theme', 'light')
+        current_settings['records_per_page'] = request.form.get('records_per_page', '10')
+        current_settings['show_charts'] = 'true' if request.form.get('show_charts') else 'false'
+    
+    if save_settings(current_settings):
+        flash(f"Settings updated successfully", "success")
+    else:
+        flash("Failed to save settings", "error")
+    
+    return redirect(url_for('settings') + f"#{section}")
+
+@app.route('/backup/create', methods=['POST'])
+def create_backup():
+    """Create a new database backup."""
+    backup_file = backup_database()
+    
+    if backup_file:
+        flash(f"Backup created successfully: {os.path.basename(backup_file)}", "success")
+    else:
+        flash("Failed to create backup", "error")
+    
+    return redirect(url_for('settings') + "#backup")
+
+@app.route('/backup/restore', methods=['POST'])
+def restore_backup():
+    """Restore database from backup."""
+    backup_file = request.form.get('file', '')
+    
+    if not backup_file or not os.path.exists(backup_file):
+        flash("Invalid backup file", "error")
+        return redirect(url_for('settings') + "#backup")
+    
+    try:
+        # Close current database connection
+        db = getattr(g, '_database', None)
+        if db:
+            db.close()
+            g._database = None
+        
+        # Create a backup of current database before restoring
+        current_backup = backup_database()
+        
+        # Replace database with backup
+        shutil.copy2(backup_file, app.config['DATABASE'])
+        
+        flash("Backup restored successfully", "success")
+    except Exception as e:
+        app.logger.error(f"Failed to restore backup: {str(e)}")
+        flash(f"Failed to restore backup: {str(e)}", "error")
+    
+    return redirect(url_for('settings') + "#backup")
 
 # Error handlers
 @app.errorhandler(404)

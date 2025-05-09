@@ -1,16 +1,43 @@
-# SettleSense Project Plan
+# SettleSense
+
+<p align="center">
+  <img src="settle_sense/static/logo.png" alt="SettleSense Logo" width="200" height="200"/>
+</p>
+
+<p align="center">
+  <b>Professional Debt Tracking Application</b><br>
+  <i>Track debts, credits, and settlements with precision</i>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#screenshots">Screenshots</a> •
+  <a href="#development">Development</a> •
+  <a href="#license">License</a>
+</p>
+
+## Overview
+
+SettleSense is a professional-grade web application designed to track peer-to-peer debts and credits. It provides a clean, intuitive interface for users to log financial transactions, view their net balance, and manage settlements with precision.tleSense Project Plan
 
 ## Overview
 
 We’re building a simple web application to track peer-to-peer debts. Users can log what they owe or what’s owed to them and view their net balance at a glance.
 
-## Tech Stack
+## Features
 
-* **Backend:** Python Flask
-* **Database:** SQLite (lightweight, file-based)
-* **Frontend:** HTML/CSS with Bootstrap for styling, vanilla JavaScript for interactivity
-* **Templating:** Jinja2 for server-rendered views
-* **Development Environment:** virtualenv with `pip`
+- **💰 Comprehensive Debt Tracking**: Log debts and credits with detailed information
+- **📊 Advanced Analytics Dashboard**: Visual representations of your financial situation
+- **⏱️ Time-Based Insights**: Track when debts were created and modified
+- **🔄 Intuitive Transaction Management**: Add, edit, and delete entries with ease
+- **📱 Responsive Design**: Works on desktop and mobile devices
+- **🔍 Search & Filter**: Find specific transactions quickly
+- **📁 Data Export**: Export your debt records in CSV format
+- **🔧 Database Migration System**: Seamlessly upgrade between versions
+- **⚙️ Customizable Settings**: Personalize your experience
+- **💾 Backup & Restore**: Protect your financial data
 
 ## MVP Features
 
