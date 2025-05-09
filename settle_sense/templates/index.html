@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="{{ theme }}">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+
+<body data-theme="{{ theme }}">
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('index') }}">
@@ -45,8 +48,10 @@
             </div>
         </div>
     </nav>
+    <!-- End Navbar -->
 
     <div class="container mt-4">
+        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -57,102 +62,136 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
+        <!-- End Flash Messages -->
 
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card text-white {{ 'bg-success' if net_balance >= 0 else 'bg-danger' }}">
-                    <div class="card-body">
-                        <h5 class="card-title">Net Balance</h5>
-                        <p class="card-text display-5">{{ format_currency(net_balance) }}</p>
-                        <p class="card-text">
-                            {% if net_balance >= 0 %}
-                                <i class="bi bi-arrow-up-circle-fill me-1"></i>Net positive
-                            {% else %}
-                                <i class="bi bi-arrow-down-circle-fill me-1"></i>Net negative
-                            {% endif %}
-                        </p>
+        <!-- Summary Cards Row -->
+        <div class="summary-cards-row mb-4">
+            <!-- Net Balance Card -->
+            <div class="summary-card card-net-balance centered-card {{ 'border-success' if net_balance >= 0 else 'border-danger' }}">
+                <div class="card-body net-balance-body">
+                    <h5 class="net-balance-title">Net Balance</h5>
+                    <div class="net-balance-pill">
+                        {{ format_currency(net_balance) }}
                     </div>
+                    <p class="net-balance-status">
+                        {% if net_balance >= 0 %}
+                            <i class="bi bi-arrow-up-circle-fill me-1 text-success"></i>Net positive
+                        {% else %}
+                            <i class="bi bi-arrow-down-circle-fill me-1 text-danger"></i>Net negative
+                        {% endif %}
+                    </p>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card bg-success text-white">
-                    <div class="card-body">
-                        <h5 class="card-title">They Owe You</h5>
-                        <p class="card-text display-5">{{ format_currency(total_owed_to_you) }}</p>
-                        <p class="card-text"><i class="bi bi-person-check me-1"></i>Total receivables</p>
-                    </div>
+            <!-- They Owe You Card -->
+            <div class="summary-card card-summary centered-card">
+                <div class="card-body">
+                    <svg class="mb-3 d-block mx-auto" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 00-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 010 7.75"></path>
+                    </svg>
+                    <h5 class="card-title text-secondary mb-2 text-center">They Owe You</h5>
+                    <p class="card-text display-5 text-success text-center">{{ format_currency(total_owed_to_you) }}</p>
+                    <p class="card-text text-secondary text-center">
+                        <i class="bi bi-person-check me-1"></i>Total receivables
+                    </p>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card bg-danger text-white">
-                    <div class="card-body">
-                        <h5 class="card-title">You Owe Others</h5>
-                        <p class="card-text display-5">{{ format_currency(total_you_owe) }}</p>
-                        <p class="card-text"><i class="bi bi-person-dash me-1"></i>Total payables</p>
-                    </div>
+            <!-- You Owe Others Card -->
+            <div class="summary-card card-summary centered-card">
+                <div class="card-body">
+                    <svg class="mb-3 d-block mx-auto" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E53935" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <line x1="21" y1="11" x2="15" y2="11"></line>
+                    </svg>
+                    <h5 class="card-title text-secondary mb-2 text-center">You Owe Others</h5>
+                    <p class="card-text display-5 text-danger text-center">{{ format_currency(total_you_owe) }}</p>
+                    <p class="card-text text-secondary text-center">
+                        <i class="bi bi-person-dash me-1"></i>Total payables
+                    </p>
                 </div>
             </div>
         </div>
+        <!-- End Summary Cards Row -->
 
-        <div class="row mb-4">
-            <div class="col-lg-6">
-                <div class="card">
+        <!-- New Debt Entry and Graphs Side by Side -->
+        <div class="row mb-4 align-items-stretch">
+            <div class="col-lg-6 d-flex flex-column">
+                <div class="card add-entry-card" style="background: linear-gradient(120deg, #ffe9ef 60%, #f7fbff 100%); border-radius: 1.2rem; box-shadow: 0 4px 24px 0 rgba(255, 158, 94, 0.10); padding: 1.2rem 1.2rem 1rem 1.2rem; max-width: 340px; margin: 0 auto;">
+                    <div class="add-entry-title" style="font-size:1.3rem;font-weight:800;color:#222;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
+                        <svg fill="none" stroke="#222" stroke-width="2" viewBox="0 0 24 24" style="width:1.5em;height:1.5em;"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                        Add Entry
+                    </div>
+                    <form method="POST" action="/add" autocomplete="off" style="width:100%;">
+                        <div class="form-group mb-2 add-entry-person-group">
+                            <i class="bi bi-person add-entry-icon"></i>
+                            <input type="text" class="form-control add-entry-person-input" id="person" name="person" placeholder="Name" required>
+                            <div class="add-entry-amount-preview">£ <span id="amountPreview">0</span></div>
+                        </div>
+                        <div class="form-group mb-2 add-entry-amount-group">
+                            <i class="bi bi-currency-pound add-entry-icon"></i>
+                            <input type="number" class="form-control add-entry-amount-input" id="amount" name="amount" min="0.01" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group mb-2 pill-toggle">
+                            <button type="button" class="pill-option you-owe flex-fill{% if direction == 'you_owe' %} active{% endif %}" data-value="you_owe">
+                                <i class="bi bi-dash-circle"></i> You owe
+                            </button>
+                            <button type="button" class="pill-option they-owe flex-fill{% if direction != 'you_owe' %} active{% endif %}" data-value="they_owe">
+                                <i class="bi bi-arrow-right-circle"></i> They owe you
+                            </button>
+                            <input type="hidden" name="direction" id="direction" value="{{ direction or 'they_owe' }}">
+                        </div>
+                        <div class="form-group mb-2 add-entry-note-group">
+                            <i class="bi bi-chat-left-text add-entry-icon-note"></i>
+                            <input type="text" class="form-control add-entry-note-input" id="note" name="note" placeholder="Note">
+                            <button type="submit" class="btn add-entry-btn">
+                                <i class="bi bi-plus-circle me-1"></i> Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="col-lg-6 d-flex flex-column">
+                <div class="card h-100">
                     <div class="card-header bg-primary text-white">
                         <h5 class="card-title mb-0">
-                            <i class="bi bi-plus-circle me-1"></i>New Debt Entry
+                            <i class="bi bi-graph-up me-1"></i>Debt Analysis
                         </h5>
                     </div>
                     <div class="card-body">
-                        <form action="{{ url_for('add') }}" method="post">
-                            <div class="mb-3">
-                                <label for="person" class="form-label">Person</label>
-                                <input type="text" class="form-control" id="person" name="person" required 
-                                    list="person-list" placeholder="Enter person's name">
-                                <datalist id="person-list">
-                                    {% for person in people %}
-                                        <option value="{{ person.person }}">
-                                    {% endfor %}
-                                </datalist>
-                            </div>
-                            <div class="mb-3">
-                                <label for="amount" class="form-label">Amount</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" min="0.01" step="0.01" class="form-control" 
-                                        id="amount" name="amount" required placeholder="0.00">
+                        <ul class="nav nav-tabs mb-3" id="chartTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="balance-tab" data-bs-toggle="tab" data-bs-target="#balance-chart" type="button" role="tab">Balance Summary</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="person-tab" data-bs-toggle="tab" data-bs-target="#person-chart" type="button" role="tab">By Person</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="balance-chart" role="tabpanel">
+                                <div style="height: 260px;">
+                                    <canvas id="balanceChart"
+                                        data-balance='[{"label": "Owed to You", "value": {{ total_owed_to_you }}}, {"label": "You Owe", "value": {{ total_you_owe }}}]'
+                                        data-colors='["#198754", "#dc3545"]'></canvas>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label d-block">Direction</label>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="direction" 
-                                        id="they_owe" value="they_owe" checked>
-                                    <label class="form-check-label" for="they_owe">
-                                        <i class="bi bi-arrow-right me-1 text-success"></i>They Owe You
-                                    </label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="direction" 
-                                        id="you_owe" value="you_owe">
-                                    <label class="form-check-label" for="you_owe">
-                                        <i class="bi bi-arrow-left me-1 text-danger"></i>You Owe Them
-                                    </label>
+                            <div class="tab-pane fade" id="person-chart" role="tabpanel">
+                                <div style="height: 260px;">
+                                    <canvas id="personChart" data-people='[
+                                        {% for person in people_summary %}{"name": "{{ person.name }}", "balance": {{ person.balance }}}{% if not loop.last %},{% endif %}{% endfor %}
+                                    ]' data-colors='["#198754", "#dc3545"]'></canvas>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="note" class="form-label">Note (Optional)</label>
-                                <textarea class="form-control" id="note" name="note" rows="2" 
-                                    placeholder="What is this debt for?"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save me-1"></i>Save Entry
-                            </button>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+        <!-- End New Debt Entry and Graphs Side by Side -->
 
+        <!-- Debt Entries Table -->
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h5 class="card-title mb-0">
@@ -160,15 +199,82 @@
                 </h5>
             </div>
             <div class="card-body">
+                <!-- Search and Filter Form -->
+                <div class="card mb-3">
+                    <div class="card-body py-3">
+                        <form id="searchFilterForm" action="{{ url_for('index') }}" method="get" class="row g-3">
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" name="search" placeholder="Search by person or note..." value="{{ filters.search }}" aria-label="Search">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" name="person" aria-label="Filter by person">
+                                    <option value="">All People</option>
+                                    {% for p in people %}
+                                        <option value="{{ p.person }}" {% if filters.person==p.person %}selected{% endif %}>{{ p.person }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" name="direction" aria-label="Filter by direction">
+                                    <option value="">All Directions</option>
+                                    <option value="they_owe" {% if filters.direction=='they_owe' %}selected{% endif %}>They Owe You</option>
+                                    <option value="you_owe" {% if filters.direction=='you_owe' %}selected{% endif %}>You Owe Them</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-filter me-1"></i>Apply
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="hidden" name="sort" value="{{ filters.sort }}">
+                            <input type="hidden" name="order" value="{{ filters.order }}">
+                        </form>
+                    </div>
+                </div>
+                <!-- End Search and Filter Form -->
+
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Person</th>
-                                <th>Amount</th>
-                                <th>Direction</th>
+                                <th>
+                                    <a href="{{ url_for('index', search=filters.search, person=filters.person, direction=filters.direction, sort='person', order='desc' if filters.sort == 'person' and filters.order == 'asc' else 'asc') }}" class="text-dark text-decoration-none">
+                                        Person
+                                        {% if filters.sort == 'person' %}
+                                            <i class="bi bi-caret-{% if filters.order == 'asc' %}up{% else %}down{% endif %}-fill ms-1"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ url_for('index', search=filters.search, person=filters.person, direction=filters.direction, sort='amount', order='desc' if filters.sort == 'amount' and filters.order == 'asc' else 'asc') }}" class="text-dark text-decoration-none">
+                                        Amount
+                                        {% if filters.sort == 'amount' %}
+                                            <i class="bi bi-caret-{% if filters.order == 'asc' %}up{% else %}down{% endif %}-fill ms-1"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ url_for('index', search=filters.search, person=filters.person, direction=filters.direction, sort='direction', order='desc' if filters.sort == 'direction' and filters.order == 'asc' else 'asc') }}" class="text-dark text-decoration-none">
+                                        Direction
+                                        {% if filters.sort == 'direction' %}
+                                            <i class="bi bi-caret-{% if filters.order == 'asc' %}up{% else %}down{% endif %}-fill ms-1"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
                                 <th>Note</th>
-                                <th>Date</th>
+                                <th>
+                                    <a href="{{ url_for('index', search=filters.search, person=filters.person, direction=filters.direction, sort='date', order='desc' if filters.sort == 'date' and filters.order == 'asc' else 'asc') }}" class="text-dark text-decoration-none">
+                                        Date
+                                        {% if filters.sort == 'date' or not filters.sort %}
+                                            <i class="bi bi-caret-{% if filters.order == 'asc' %}up{% else %}down{% endif %}-fill ms-1"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -195,20 +301,16 @@
                                             <span class="text-muted">No note</span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        {{ entry.created_at|format_date }}
-                                    </td>
+                                    <td>{{ entry.created_at|format_date }}</td>
                                     <td>
                                         <div class="btn-group">
                                             <a href="{{ url_for('edit', id=entry.id) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ entry.id }}">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </div>
-
                                         <!-- Delete Modal -->
                                         <div class="modal fade" id="deleteModal{{ entry.id }}" tabindex="-1">
                                             <div class="modal-dialog">
@@ -243,144 +345,165 @@
                 </div>
             </div>
         </div>
+        <!-- End Debt Entries Table -->
 
-        <div class="row mb-4">
-            <div class="col-lg-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-graph-up me-1"></i>Debt Analysis
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="nav nav-tabs mb-4" id="chartTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="balance-tab" data-bs-toggle="tab" 
-                                        data-bs-target="#balance-chart" type="button">Balance Summary</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="person-tab" data-bs-toggle="tab" 
-                                        data-bs-target="#person-chart" type="button">By Person</button>
-                            </li>
-                        </ul>
-                        
-                        <div class="tab-content">
-                            <div class="tab-pane fade show active" id="balance-chart">
-                                <div class="row">
-                                    <div class="col-md-8 mx-auto">
-                                        <div style="height: 300px;">
-                                            <canvas id="balanceChart"></canvas>
-                                        </div>
-                                    </div>
-                                </div>
+        <!-- Recent Activity Card -->
+        <div class="card activity-card mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="activity-title" style="font-size:1.2rem;font-weight:700;color:#222;">Recent Activity</div>
+                <a href="/activity" class="activity-viewall-link" style="font-size:1rem;color:#6fd0e9;font-weight:600;text-decoration:none;">View all</a>
+            </div>
+            <div class="activity-list">
+                {% for activity in recent_activities %}
+                    <div class="activity-item activity-item--{{ 'they-owe' if activity.direction == 'they_owe' else 'you-owe' }}">
+                        <div class="avatar" style="background:{{ '#e6f7fa' if activity.direction == 'they_owe' else '#ffe9ef' }};color:{{ '#21aae0' if activity.direction == 'they_owe' else '#e57373' }};">
+                            {{ activity.person[0]|upper }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="activity-person" style="font-weight:700;font-size:1.05rem;">{{ activity.person }}</div>
+                            <div class="activity-desc" style="font-size:0.98rem;color:#757575;">
+                                {% if activity.direction == 'they_owe' %}
+                                    Owes you
+                                {% else %}
+                                    You owe
+                                {% endif %}
+                                <span style="font-weight:600;color:#222;">{{ format_currency(activity.amount) }}</span>
+                                {% if activity.note %}<span class="activity-note" style="color:#bdbdbd;font-size:0.92rem;">({{ activity.note }})</span>{% endif %}
                             </div>
-                            <div class="tab-pane fade" id="person-chart">
-                                <div class="row">
-                                    <div class="col-md-8 mx-auto">
-                                        <div style="height: 300px;">
-                                            <canvas id="personChart"></canvas>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <div class="activity-date" style="font-size:0.92rem;color:#bdbdbd;">{{ activity.date }}</div>
                         </div>
                     </div>
-                </div>
+                {% else %}
+                    <div class="text-center text-muted" style="font-size:1.05rem;">No recent activity.</div>
+                {% endfor %}
             </div>
         </div>
+        <!-- End Recent Activity Card -->
     </div>
 
+    <!-- Footer -->
     <footer class="mt-5 py-3 text-center text-muted border-top">
         <div class="container">
             <p class="mb-1">SettleSense &copy; {{ current_year }}</p>
             <p class="mb-0">Track your debts professionally.</p>
         </div>
     </footer>
+    <!-- End Footer -->
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Chart data initialization
+        // Chart data initialization using data attributes
         document.addEventListener('DOMContentLoaded', function() {
+            // Chart.js instances
+            let balanceChartInstance = null;
+            let personChartInstance = null;
+
             // Balance chart
-            const balanceCtx = document.getElementById('balanceChart').getContext('2d');
-            new Chart(balanceCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Owed to You', 'You Owe'],
-                    datasets: [{
-                        data: [{{ total_owed_to_you }}, {{ total_you_owe }}],
-                        backgroundColor: ['#198754', '#dc3545'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        title: {
-                            display: true,
-                            text: 'Debt Distribution'
+            const balanceCanvas = document.getElementById('balanceChart');
+            if (balanceCanvas) {
+                const balanceData = JSON.parse(balanceCanvas.getAttribute('data-balance'));
+                const balanceColors = JSON.parse(balanceCanvas.getAttribute('data-colors'));
+                balanceChartInstance = new Chart(balanceCanvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: balanceData.map(d => d.label),
+                        datasets: [{
+                            data: balanceData.map(d => d.value),
+                            backgroundColor: balanceColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            title: { display: true, text: 'Debt Distribution' }
                         }
                     }
-                }
-            });
+                });
+            }
 
-            // Get person data for the chart
-            const peopleData = [
-                {% for person in people_summary %}
-                    {
-                        name: "{{ person.name }}",
-                        balance: {{ person.balance }}
-                    },
-                {% endfor %}
-            ];
-
-            // Person chart
-            const personCtx = document.getElementById('personChart').getContext('2d');
-            new Chart(personCtx, {
-                type: 'bar',
-                data: {
-                    labels: peopleData.map(p => p.name),
-                    datasets: [{
-                        label: 'Balance',
-                        data: peopleData.map(p => p.balance),
-                        backgroundColor: peopleData.map(p => p.balance >= 0 ? '#198754' : '#dc3545'),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
+            // Person chart (initialize only when tab is shown)
+            let personChartInitialized = false;
+            function initPersonChart() {
+                if (personChartInitialized) return;
+                const personCanvas = document.getElementById('personChart');
+                if (personCanvas) {
+                    const peopleData = JSON.parse(personCanvas.getAttribute('data-people'));
+                    const personColors = JSON.parse(personCanvas.getAttribute('data-colors'));
+                    personChartInstance = new Chart(personCanvas.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: peopleData.map(p => p.name),
+                            datasets: [{
+                                label: 'Balance',
+                                data: peopleData.map(p => p.balance),
+                                backgroundColor: peopleData.map(p => p.balance >= 0 ? personColors[0] : personColors[1]),
+                                borderWidth: 1
+                            }]
                         },
-                        title: {
-                            display: true,
-                            text: 'Balance by Person'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                display: true
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                title: { display: true, text: 'Balance by Person' }
+                            },
+                            scales: {
+                                y: { beginAtZero: true, grid: { display: true } },
+                                x: { grid: { display: false } }
                             }
                         }
-                    }
+                    });
+                    personChartInitialized = true;
                 }
+            }
+
+            // Bootstrap tab event: initialize person chart only when tab is shown
+            const personTab = document.getElementById('person-tab');
+            if (personTab) {
+                personTab.addEventListener('shown.bs.tab', function () {
+                    initPersonChart();
+                    if (personChartInstance) personChartInstance.resize();
+                });
+            }
+            // If the person tab is already active on load, initialize immediately
+            if (document.getElementById('person-chart').classList.contains('show')) {
+                initPersonChart();
+            }
+
+            // --- Pill Toggle for Add Entry Direction ---
+            const pillOptions = document.querySelectorAll('.pill-toggle .pill-option');
+            const directionInput = document.getElementById('direction');
+            pillOptions.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    pillOptions.forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = '#fff';
+                        b.style.color = b.classList.contains('they-owe') ? '#6C8EF5' : '#e57373';
+                    });
+                    this.classList.add('active');
+                    this.style.background = '#6C8EF5';
+                    this.style.color = '#fff';
+                    directionInput.value = this.getAttribute('data-value');
+                });
             });
+
+            // Amount preview update
+            const amountInput = document.getElementById('amount');
+            const amountPreview = document.getElementById('amountPreview');
+            if (amountInput && amountPreview) {
+                amountInput.addEventListener('input', function() {
+                    amountPreview.textContent = this.value ? this.value : '0';
+                });
+            }
         });
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <!-- End Scripts -->
 </body>
+
 </html>

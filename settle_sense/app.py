@@ -197,13 +197,18 @@ def migrate():
     db_checks = check_database_status()
     needs_mig = needs_migration()
     
+    # Get user's theme preference from settings
+    settings = get_settings()
+    theme = settings.get('theme', 'light')
+    
     return render_template(
         'migration.html',
         db_checks=db_checks,
         needs_migration=needs_mig,
         current_year=current_year,
         message=None,
-        error=None
+        error=None,
+        theme=theme
     )
 
 @app.route('/migrate/run', methods=['POST'])
@@ -288,6 +293,10 @@ def run_migration():
     db_checks = check_database_status()
     needs_mig = needs_migration()
     
+    # Get user's theme preference from settings
+    settings = get_settings()
+    theme = settings.get('theme', 'light')
+    
     return render_template(
         'migration.html',
         db_checks=db_checks,
@@ -295,7 +304,8 @@ def run_migration():
         current_year=current_year,
         message=message,
         error=error,
-        error_details=error_details
+        error_details=error_details,
+        theme=theme
     )
 
 # Run initialization when the application starts
@@ -362,34 +372,63 @@ def index():
     cursor = db.execute("PRAGMA table_info(debt)")
     columns = {row['name'] for row in cursor.fetchall()}
     
-    # Use a safer query that works whether or not created_at exists
-    if 'created_at' in columns:
-        entries = db.execute('''
-            SELECT *, 
-                   CASE direction
-                       WHEN 'they_owe' THEN amount
-                       ELSE -amount
-                   END as net_amount
-            FROM debt 
-            ORDER BY created_at DESC
-        ''').fetchall()
-    else:
-        entries = db.execute('''
-            SELECT *, 
-                   CASE direction
-                       WHEN 'they_owe' THEN amount
-                       ELSE -amount
-                   END as net_amount
-            FROM debt 
-            ORDER BY id DESC
-        ''').fetchall()
+    # Extract search/filter parameters
+    search_query = request.args.get('search', '').strip()
+    filter_person = request.args.get('person', '').strip()
+    filter_direction = request.args.get('direction', '').strip()
+    sort_by = request.args.get('sort', 'date')
+    sort_order = request.args.get('order', 'desc')
+    
+    # Build the base query
+    base_query = '''
+        SELECT *, 
+               CASE direction
+                   WHEN 'they_owe' THEN amount
+                   ELSE -amount
+               END as net_amount
+        FROM debt 
+        WHERE 1=1
+    '''
+    
+    query_params = []
+    
+    # Apply filters
+    if search_query:
+        base_query += " AND (person LIKE ? OR note LIKE ?)"
+        query_params.extend(['%' + search_query + '%', '%' + search_query + '%'])
+    
+    if filter_person:
+        base_query += " AND person = ?"
+        query_params.append(filter_person)
+    
+    if filter_direction:
+        base_query += " AND direction = ?"
+        query_params.append(filter_direction)
+    
+    # Apply sorting
+    if sort_by == 'amount':
+        base_query += " ORDER BY amount"
+    elif sort_by == 'person':
+        base_query += " ORDER BY person"
+    elif sort_by == 'direction':
+        base_query += " ORDER BY direction"
+    else:  # Default: date or fallback to id
+        if 'created_at' in columns:
+            base_query += " ORDER BY created_at"
+        else:
+            base_query += " ORDER BY id"
+    
+    base_query += " " + sort_order.upper()
+    
+    # Execute query
+    entries = db.execute(base_query, query_params).fetchall()
 
     # Calculate statistics
     net_balance = sum(e['net_amount'] for e in entries)
     total_owed_to_you = sum(e['amount'] for e in entries if e['direction'] == 'they_owe')
     total_you_owe = sum(e['amount'] for e in entries if e['direction'] == 'you_owe')
     
-    # Get unique people
+    # Get unique people for filter dropdown
     people = db.execute('SELECT DISTINCT person FROM debt ORDER BY person').fetchall()
     
     # Get person summary for charts
@@ -415,8 +454,21 @@ def index():
     # Sort by balance (highest positive first)
     people_summary.sort(key=lambda x: x['balance'], reverse=True)
     
+    # Get user's theme preference from settings
+    settings = get_settings()
+    theme = settings.get('theme', 'light')
+    
     # Current datetime for templates
     current_year = datetime.datetime.now().year
+    
+    # Keep track of current filters for form
+    current_filters = {
+        'search': search_query,
+        'person': filter_person,
+        'direction': filter_direction,
+        'sort': sort_by,
+        'order': sort_order
+    }
     
     return render_template(
         'index.html',
@@ -427,7 +479,9 @@ def index():
         people=people,
         people_summary=people_summary,
         format_currency=format_currency,
-        current_year=current_year
+        current_year=current_year,
+        filters=current_filters,
+        theme=theme
     )
 
 @app.route('/add', methods=['POST'])
@@ -560,7 +614,10 @@ def edit(id):
         # GET request - show edit form
         entry = db.execute('SELECT * FROM debt WHERE id = ?', (id,)).fetchone()
         if entry:
-            return render_template('edit.html', entry=entry)
+            # Get user's theme preference from settings
+            settings = get_settings()
+            theme = settings.get('theme', 'light')
+            return render_template('edit.html', entry=entry, theme=theme)
         else:
             flash("Entry not found", "error")
             return redirect(url_for('index'))
@@ -780,6 +837,9 @@ def settings():
     backups = get_backups()
     current_year = datetime.datetime.now().year
     
+    # Get the current theme
+    theme = current_settings.get('theme', 'light')
+    
     return render_template(
         'settings.html',
         settings=current_settings,
@@ -789,7 +849,8 @@ def settings():
         record_count=db_info['record_count'],
         sys_info=sys_info,
         backups=backups,
-        current_year=current_year
+        current_year=current_year,
+        theme=theme
     )
 
 @app.route('/settings/update', methods=['POST'])
@@ -859,13 +920,19 @@ def restore_backup():
 @app.errorhandler(404)
 def page_not_found(e):
     current_year = datetime.datetime.now().year
-    return render_template('error.html', error=e, current_year=current_year), 404
+    # Get user's theme preference from settings
+    settings = get_settings()
+    theme = settings.get('theme', 'light')
+    return render_template('error.html', error=e, current_year=current_year, theme=theme), 404
 
 @app.errorhandler(500)
 def server_error(e):
     app.logger.error(f"Server error: {str(e)}")
     current_year = datetime.datetime.now().year
-    return render_template('error.html', error=e, current_year=current_year), 500
+    # Get user's theme preference from settings
+    settings = get_settings()
+    theme = settings.get('theme', 'light')
+    return render_template('error.html', error=e, current_year=current_year, theme=theme), 500
 
 if __name__ == '__main__':
     # Get port from environment or default to 5000

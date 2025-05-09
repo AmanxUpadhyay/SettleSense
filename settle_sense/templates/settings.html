@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="{{ theme }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body data-theme="{{ theme }}">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
+        <div class="container-fluid"> 
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="bi bi-cash-coin me-2"></i>SettleSense
             </a>
@@ -175,7 +175,7 @@
                                         <label for="theme" class="form-label">Theme</label>
                                         <select class="form-select" id="theme" name="theme">
                                             <option value="light" {% if settings.get('theme', 'light') == 'light' %}selected{% endif %}>Light</option>
-                                            <option value="dark" {% if settings.get('theme') == 'dark' %}selected{% endif %}>Dark (Coming Soon)</option>
+                                            <option value="dark" {% if settings.get('theme') == 'dark' %}selected{% endif %}>Dark</option>
                                         </select>
                                     </div>
                                     
@@ -343,6 +343,16 @@
                     window.location.hash = event.target.getAttribute('href');
                 });
             });
+            
+            // Theme switcher immediate preview
+            const themeSelect = document.getElementById('theme');
+            if (themeSelect) {
+                themeSelect.addEventListener('change', function() {
+                    const newTheme = this.value;
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    document.body.setAttribute('data-theme', newTheme);
+                });
+            }
         });
     </script>
 </body>
